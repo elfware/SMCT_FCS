@@ -1,0 +1,113 @@
+function [IhExact IvExact IhDiscrete IvDiscrete]=PhotonTraceRotSIm(Param)
+
+%  Param.rotationAxes=[1;0;0];
+%  Param.Dr=[5000];
+%  Param.dim=1;
+%  Param.dt=1e-6;
+%  Param.numTrajs=20;
+%  Param.trajLength=0.2;
+%  Param.averagePhotonsinStep=40000;
+%  Param.ExScale=[1;1;0];
+%  
+%  Param.GsquaredX=GsquaredX;
+%  Param.GsquaredY=GsquaredY;
+%  
+%  Param.StringCom='NoShutnoise';%'AddShutnoise';
+
+%% Simulate polarization intensities, signals and autocrorreltation for rotational diffusion with photon shot noise
+StringCom=Param.StringCom;
+GsquaredX=Param.GsquaredX;
+GsquaredY=Param.GsquaredY;
+
+rotationAxes =Param.rotationAxes;% [1;0;0]; % Every column is an axis around wich rotation is performed 
+Dr = Param.Dr;%[5000]; %One dimensiaonal rotatioal diffusion constants for the different axes. In radians^2/s
+dt=Param.dt;  %1e-6; %in seconds
+dim=Param.dim;%1;
+ExScale=Param.ExScale;%scaling coordinate for to include the exitation laser behavior  
+averagePhotons=Param.averagePhotonsinStep;%40000;%Average number of photons per second. Number of photons in a timestep is
+%assumed to be  poission distribtued.
+
+numTrajs=Param.numTrajs;%20; % number of trajectoreis to simulate, much larger in real data
+trajLength=Param.trajLength;%0.2; %Length of trajectories in seconds
+
+rotationForces = [0]; % harmonic potential force constant *k), to get acting force 2*k(x-x_0)
+numAxes=numel(rotationForces);
+
+timeSteps=0:dt:trajLength;
+
+averagePhotonsinStep=averagePhotons*dt;
+
+IhDiscrete=[];%cell(1,numTrajs);
+IvDiscrete=[];%cell(1,numTrajs);
+
+IhExact=[];%cell(1,numTrajs);
+IvExact=[];%cell(1,numTrajs);
+PhvExact=[];%cell(1,numTrajs);
+
+IhDiscrete=zeros(numTrajs,numel(timeSteps));
+IvDiscrete=zeros(numTrajs,numel(timeSteps));    
+IhExact=zeros(numTrajs,numel(timeSteps));
+IvExact=zeros(numTrajs,numel(timeSteps));
+PhvExact=zeros(numTrajs,numel(timeSteps));
+phi = ones(1,numTrajs)*pi/2;
+theta = rand(1,numTrajs)*pi;
+%u=rand();
+%v=rand();
+
+%phi=2*pi*u;%phi_patch between [0 2pi] uniform over patch area
+%2*v-1 should go from [1-2*Fp to 1] since the surfface area of sampled area of the sampled patch is is 4*pi*r^2*Fp which gives theta_P_max = acos(1-2*FP) and theta_P_min=0=acos(1)
+%theta=acos(2*v-1);  %thetapatch between [0 acos(1-2*Fp] over the patch area. this Interval is consistent with that the patch area = Fp/total surface area of spere
+
+coordinates = myEqualExciation(phi,theta);
+          %Rotate random directed angle around this axis
+          % See math.kennesaw.ed/~plaval/math4490/rotgen.pdf for derivation of forrmula for rotation around
+
+ChooseVector=rand(numTrajs,numel(timeSteps))<0.5;
+thetaStep=sqrt(2*Dr.*dt.*dim); 			%DImensionality comes in in the measn squared angular displacement
+RotPath=thetaStep*ChooseVector-thetaStep*not(ChooseVector);
+thetaVector=cumsum(RotPath,2);
+S=sin(thetaVector);
+C=cos(thetaVector);
+t=1-C;
+
+coordinates= repmat(reshape(C,1,numTrajs,size(C,2)),3,1).*repmat(coordinates,1,1,size(C,2)) +...                                                 % C*[1 0 0; 0 1 0; 0 0 1] 
+             repmat(reshape(t,1,numTrajs,size(t,2)),3,1).*repmat(rotationAxes*rotationAxes'*coordinates,1,1,size(C,2)) +...                    % t*[xA yA zA]'* [xA yA zA]         
+             repmat(reshape(S,1,numTrajs,size(S,2)),3,1).*repmat([0 -rotationAxes(3) rotationAxes(2); rotationAxes(3) 0 -rotationAxes(1); -rotationAxes(2) rotationAxes(1) 0]*coordinates,1,1,size(C,2)); %  S*[0  -zA  yA; zA  0 -xA; -yA  xA  0];
+
+rho=sqrt(coordinates(1,:,:).^2+coordinates(2,:,:).^2);
+
+my=repmat(ExScale,1,10,size(C,2)).*coordinates;
+%my=my.*repmat(rho,3,1); % The component in the xy plane is scaled with rho = sin(theta)
+
+Ih=conj(my(1,:,:)).*sum(repmat(transpose(GsquaredX(1,:)),1,10,size(C,2)).*my,1) +...
+   conj(my(2,:,:)).*sum(repmat(transpose(GsquaredX(2,:)),1,10,size(C,2)).*my,1) +...
+   conj(my(3,:,:)).*sum(repmat(transpose(GsquaredX(3,:)),1,10,size(C,2)).*my,1);
+IhT(:,:)=Ih(1,:,:); Ih=IhT;
+
+Iv=conj(my(1,:,:)).*sum(repmat(transpose(GsquaredY(1,:)),1,10,size(C,2)).*my,1) +...
+   conj(my(2,:,:)).*sum(repmat(transpose(GsquaredY(2,:)),1,10,size(C,2)).*my,1) +...
+   conj(my(3,:,:)).*sum(repmat(transpose(GsquaredY(3,:)),1,10,size(C,2)).*my,1);
+IvT(:,:)=Iv(1,:,:); Iv=IvT;
+
+Isum=Ih+Iv;
+hProb=Ih./Isum;
+%vProb=Iv./Isum;
+%P=(Ih-Iv)./Isum;
+
+IhExact=Ih;
+IvExact=Iv;
+%PhvExact=P;
+
+
+if strcmp(StringCom,'AddShutnoise')
+numPhotons=poissrnd(sum(conj(my).*my,1)*averagePhotonsinStep); %The number of photons in this fixed time step is pooison distributed
+numPhotonsT(:,:)=numPhotons(1,:,:); numPhotons=numPhotonsT;
+
+IhDiscrete=binornd(numPhotons,hProb);% The number of photons on the horizotal channel in this time  step is binomialy distributed with number of trials numPhotons and probability of sucess hProb 
+IvDiscrete=numPhotons - IhDiscrete;
+else 
+IhDiscrete=[];
+IvDiscrete=[];
+end
+
+

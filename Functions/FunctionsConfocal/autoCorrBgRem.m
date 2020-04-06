@@ -1,0 +1,22 @@
+function [aN] = autoCorrBgRem(params,autoCorrTotNorm,background,normNumber,lagTimes)
+
+%UNTITLED7 Summary of this function goes here
+%   Detailed explanation goes here
+[~,numT]=size(autoCorrTotNorm);
+
+expVals=exp(params(1)*lagTimes);
+ampl=repmat(mean(expVals(:,1:normNumber),2)-expVals(:,end),[1 numT]);
+
+nomTemp=autoCorrTotNorm.*ampl+autoCorrTotNorm.*params(2).*(repmat(mean(background(:,1:normNumber),2),[1 numT])-background(:,end))+params(2)*(repmat(background(:,end),[1 numT])-background);
+
+%denom=ampl.*repmat(mean(autoCorrTotNorm(:,1:normNumber),2)-autoCorrTotNorm(:,end),[1 numT]);
+
+%aN= autoCorrTotNorm+(nom./denom);
+
+nom=nomTemp-repmat(nomTemp(:,end),[1 numT]);
+
+denom=repmat(mean(nom(:,1:normNumber),2)-nom(:,end),[1 numT]);
+
+aN = nom./denom;
+end
+

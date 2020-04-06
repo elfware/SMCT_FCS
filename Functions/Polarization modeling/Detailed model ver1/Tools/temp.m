@@ -1,0 +1,1 @@
+gaussianPolarizationEqualRotationX([0.45;0.6],GsquaredX,1000,10)
