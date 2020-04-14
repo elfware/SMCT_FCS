@@ -1,7 +1,7 @@
 # SMCT_FCS
 
 ==========================================================================
- Copyright (C) 2015-2020 ELias Amselem, Emil Marklund, and Johan Elf
+ Copyright (C) 2015-2020 Emil Marklund,Elias Amselem, and Johan Elf
  
  E-mail: 
  TO be added 
@@ -19,3 +19,5 @@
  
  You should have received a copy of the GNU General Public License
  along with this program. If not, see <http://www.gnu.org/licenses
+ 
+ Software has been tested in MatLab R2018a
