@@ -2,9 +2,9 @@
 
 ==========================================================================
  Copyright (C) 2015-2020 Emil Marklund,Elias Amselem, and Johan Elf
- 
- E-mail: See https://doi.org/10.1038/s41586-020-2413-7 
  ==========================================================================
+ 
+ E-mail: See contacts in https://doi.org/10.1038/s41586-020-2413-7  
  
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
